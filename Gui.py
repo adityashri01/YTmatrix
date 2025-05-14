@@ -2,6 +2,8 @@ import customtkinter as ctk
 from tkinter import messagebox
 from main import fetch_playlist_videos, fetch_video_details
 import time
+from firebase import db
+from google.cloud import firestore  # required for SERVER_TIMESTAMP
 
 logged_in = True
 
@@ -70,7 +72,7 @@ video_count_entry.grid(row=1, column=3, pady=5)
 
 label_sort_by = ctk.CTkLabel(filters_frame, text="Sort By:", font=("Arial", 14, "bold"))
 label_sort_by.grid(row=1, column=4, padx=10, pady=5, sticky="e")
-sort_option = ctk.CTkOptionMenu(filters_frame, values=["None", "Duration", "Published Date"], width=160, corner_radius=8)
+sort_option = ctk.CTkOptionMenu(filters_frame, values=["None", "Duration", "Published Date", "Views"], width=160, corner_radius=8)
 sort_option.grid(row=1, column=5, pady=5, padx=5)
 
 # === Output Section ===
@@ -114,7 +116,6 @@ def fetch_data():
             max_duration = float(max_duration_entry.get())
             if max_duration <= 0:
                 raise ValueError
-
     except:
         messagebox.showerror("Error", "Please enter valid numeric filter values.")
         loading_spinner.set(0)
@@ -122,6 +123,18 @@ def fetch_data():
         return
 
     output_text.delete("1.0", "end")
+
+    # Save search history to Firestore
+    search_record = {
+        "url": url,
+        "timestamp": firestore.SERVER_TIMESTAMP,
+        "filters": {
+            "max_duration": max_duration,
+            "max_videos": max_videos,
+            "sort_by": sort_option.get()
+        }
+    }
+    db.collection("search_history").add(search_record)
 
     try:
         if "list=" in url:
@@ -134,8 +147,11 @@ def fetch_data():
         if not videos:
             messagebox.showinfo("Not Found", "❌ No video(s) found.")
         else:
+            if sort_option.get() == "Views":
+                videos.sort(key=lambda x: int(x["view_count"]), reverse=True)
+
             for video in videos:
-                output_text.insert("end", f"🎬 {video['title']}\n📅 Published: {video['published']}\n⏳ Duration: {video['duration']}\n\n")
+                output_text.insert("end", f"🎬 {video['title']}\n📅 Published: {video['published']}\n⏳ Duration: {video['duration']}\n👁️ Views: {video['view_count']}\n\n")
 
         loading_spinner.set(0)
         loading_label.configure(text="✅ Done")
@@ -186,7 +202,4 @@ def toggle_theme():
 
 # === Run App ===
 app.mainloop()
-
-
-
 
