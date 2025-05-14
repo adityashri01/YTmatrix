@@ -61,11 +61,12 @@ def fetch_playlist_videos(playlist_input, sort_by="None", max_videos=None, max_d
                 published_at = item["snippet"]["publishedAt"]
 
                 video_details_request = youtube.videos().list(
-                    part="contentDetails",
+                    part="snippet,contentDetails,statistics",
                     id=video_id
                 )
                 video_details_response = video_details_request.execute()
                 duration = video_details_response["items"][0]["contentDetails"]["duration"]
+                view_count = video_details_response["items"][0]["statistics"]["viewCount"]  # Fetch view count
                 duration_formatted, duration_hours = convert_duration_to_time_format(duration)
                 
                 if max_duration and duration_hours > max_duration:
@@ -79,6 +80,7 @@ def fetch_playlist_videos(playlist_input, sort_by="None", max_videos=None, max_d
                     "published": published_date,
                     "duration": duration_formatted,
                     "raw_duration": duration_hours,
+                    "view_count": view_count,  # Add view count to the video data
                     "published_datetime": published_at_datetime
                 })
 
@@ -99,6 +101,7 @@ def fetch_playlist_videos(playlist_input, sort_by="None", max_videos=None, max_d
         print(f"❌ Error fetching playlist videos: {e}")
         return []
 
+
 def fetch_video_details(video_url):
     try:
         match = re.search(r"v=([a-zA-Z0-9_-]+)", video_url)
@@ -107,7 +110,7 @@ def fetch_video_details(video_url):
             return None
         video_id = match.group(1)
         request = youtube.videos().list(
-            part="snippet,contentDetails",
+            part="snippet,contentDetails,statistics",  # Include statistics part for view count
             id=video_id
         )
         response = request.execute()
@@ -119,6 +122,7 @@ def fetch_video_details(video_url):
         title = snippet["title"]
         published_at = snippet["publishedAt"]
         duration = items[0]["contentDetails"]["duration"]
+        view_count = items[0]["statistics"]["viewCount"]  # Fetch view count
         duration_formatted, duration_hours = convert_duration_to_time_format(duration)
 
         published_at_datetime = datetime.strptime(published_at, "%Y-%m-%dT%H:%M:%SZ")
@@ -129,6 +133,7 @@ def fetch_video_details(video_url):
             "published": published_date,
             "duration": duration_formatted,
             "raw_duration": duration_hours,
+            "view_count": view_count,  # Add view count to the video data
             "published_datetime": published_at_datetime
         }]
     except Exception as e:
