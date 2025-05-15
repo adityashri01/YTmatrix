@@ -1,7 +1,7 @@
 from customtkinter import *
 from tkinter import messagebox
-import json
 import hashlib
+from firebase import db  # Tera firebase.py se Firestore client import
 
 # Force Dark Mode and Theme
 set_appearance_mode("dark")
@@ -13,6 +13,10 @@ root.title("Login - YTmatrix")
 root.geometry("700x500")
 root.resizable(0, 0)
 
+# Password hashing function
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
 # --- Authentication Function ---
 def authenticate_login():
     username = username_entry.get().strip()
@@ -22,23 +26,34 @@ def authenticate_login():
         messagebox.showwarning("Input Required", "⚠️ Please fill in both Username and Password.")
         return
 
+    users_ref = db.collection("users")
     try:
-        with open("users.json", "r") as file:
-            users = json.load(file)
-            if username in users and check_password(users[username], password):
+        # Query Firestore for user with matching username
+        query = users_ref.where("username", "==", username).get()
+        if not query:
+            messagebox.showerror("Login Failed", "❌ Username not found.")
+            username_entry.delete(0, 'end')
+            password_entry.delete(0, 'end')
+            username_entry.focus()
+            return
+
+        # Check password hash
+        for doc in query:
+            user_data = doc.to_dict()
+            stored_hash = user_data.get("password", "")
+            if stored_hash == hash_password(password):
                 messagebox.showinfo("Login Success", f"✅ Welcome back, {username}!")
                 root.destroy()
                 import Gui  # Opens the dashboard
+                return
             else:
-                messagebox.showerror("Login Failed", "❌ Invalid credentials")
+                messagebox.showerror("Login Failed", "❌ Incorrect password.")
                 username_entry.delete(0, 'end')
                 password_entry.delete(0, 'end')
                 username_entry.focus()
-    except FileNotFoundError:
-        messagebox.showerror("Error", "❌ Users file not found.")
-
-def check_password(stored_hash, password):
-    return stored_hash == hashlib.sha256(password.encode()).hexdigest()
+                return
+    except Exception as e:
+        messagebox.showerror("Error", f"❌ An error occurred: {e}")
 
 # --- Registration Function ---
 def register_user():
@@ -49,24 +64,26 @@ def register_user():
         messagebox.showwarning("Input Required", "⚠️ Please fill in both Username and Password.")
         return
 
+    users_ref = db.collection("users")
+
     try:
-        with open("users.json", "r") as file:
-            users = json.load(file)
-            if username in users:
-                messagebox.showerror("Registration Failed", "❌ Username already exists.")
-                return
-    except FileNotFoundError:
-        users = {}
+        # Check if username exists
+        existing = users_ref.where("username", "==", username).get()
+        if existing:
+            messagebox.showerror("Registration Failed", "❌ Username already exists.")
+            return
 
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    users[username] = password_hash
-
-    with open("users.json", "w") as file:
-        json.dump(users, file)
-
-    messagebox.showinfo("Registration Success", "✅ User registered successfully!")
-    username_entry.delete(0, 'end')
-    password_entry.delete(0, 'end')
+        # Add new user with hashed password
+        password_hash = hash_password(password)
+        users_ref.add({
+            "username": username,
+            "password": password_hash
+        })
+        messagebox.showinfo("Registration Success", "✅ User registered successfully!")
+        username_entry.delete(0, 'end')
+        password_entry.delete(0, 'end')
+    except Exception as e:
+        messagebox.showerror("Error", f"❌ An error occurred: {e}")
 
 # --- Login Frame (Dark UI) ---
 frame = CTkFrame(root, corner_radius=20, fg_color="#1a1a1a", width=400, height=320)
