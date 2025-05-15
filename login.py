@@ -1,23 +1,28 @@
 from customtkinter import *
 from tkinter import messagebox
 import hashlib
-from firebase import db  # Tera firebase.py se Firestore client import
+from firebase import db
 
 # Force Dark Mode and Theme
 set_appearance_mode("dark")
 set_default_color_theme("dark-blue")
 
-# Main Window
 root = CTk()
 root.title("Login - YTmatrix")
-root.geometry("700x500")
-root.resizable(0, 0)
 
-# Password hashing function
+# Start in fullscreen mode
+root.attributes('-fullscreen', True)
+
+def exit_fullscreen(event=None):
+    root.attributes('-fullscreen', False)
+    root.geometry("720x520")  # Resize window to normal size if you want
+
+# Bind ESC key to exit fullscreen
+root.bind('<Escape>', exit_fullscreen)
+
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# --- Authentication Function ---
 def authenticate_login():
     username = username_entry.get().strip()
     password = password_entry.get().strip()
@@ -28,7 +33,6 @@ def authenticate_login():
 
     users_ref = db.collection("users")
     try:
-        # Query Firestore for user with matching username
         query = users_ref.where("username", "==", username).get()
         if not query:
             messagebox.showerror("Login Failed", "❌ Username not found.")
@@ -37,14 +41,13 @@ def authenticate_login():
             username_entry.focus()
             return
 
-        # Check password hash
         for doc in query:
             user_data = doc.to_dict()
             stored_hash = user_data.get("password", "")
             if stored_hash == hash_password(password):
                 messagebox.showinfo("Login Success", f"✅ Welcome back, {username}!")
                 root.destroy()
-                import Gui  # Opens the dashboard
+                import Gui
                 return
             else:
                 messagebox.showerror("Login Failed", "❌ Incorrect password.")
@@ -55,7 +58,6 @@ def authenticate_login():
     except Exception as e:
         messagebox.showerror("Error", f"❌ An error occurred: {e}")
 
-# --- Registration Function ---
 def register_user():
     username = username_entry.get().strip()
     password = password_entry.get().strip()
@@ -65,15 +67,12 @@ def register_user():
         return
 
     users_ref = db.collection("users")
-
     try:
-        # Check if username exists
         existing = users_ref.where("username", "==", username).get()
         if existing:
             messagebox.showerror("Registration Failed", "❌ Username already exists.")
             return
 
-        # Add new user with hashed password
         password_hash = hash_password(password)
         users_ref.add({
             "username": username,
@@ -85,23 +84,26 @@ def register_user():
     except Exception as e:
         messagebox.showerror("Error", f"❌ An error occurred: {e}")
 
-# --- Login Frame (Dark UI) ---
-frame = CTkFrame(root, corner_radius=20, fg_color="#1a1a1a", width=400, height=320)
+# ----------- Improved UI ------------
+
+frame = CTkFrame(root, corner_radius=25, fg_color="#121212", width=450, height=420)
 frame.place(relx=0.5, rely=0.5, anchor="center")
 
-CTkLabel(frame, text="🔐 Login to YTmatrix", font=("Arial", 20, "bold"), text_color="#00bfff").pack(pady=(10, 20))
+welcome_label = CTkLabel(frame, text="Welcome to YTmatrix\nBest YouTube Playlist Analyzer", font=("Segoe UI", 20, "bold"), text_color="#00bfff", justify="center")
+welcome_label.pack(pady=(15, 10))
+
+CTkLabel(frame, text="🔐 Login to YTmatrix", font=("Segoe UI", 26, "bold"), text_color="#00bfff").pack(pady=(5, 20))
 
 # Username
-CTkLabel(frame, text="Username:", text_color="white").pack()
-username_entry = CTkEntry(frame, width=250, fg_color="#2a2a2a", border_color="#444", text_color="white")
-username_entry.pack(pady=5)
+CTkLabel(frame, text="Username:", font=("Segoe UI", 14), text_color="#bbbbbb").pack(anchor="w", padx=40)
+username_entry = CTkEntry(frame, width=320, height=40, fg_color="#1e1e1e", border_color="#333", text_color="white", font=("Segoe UI", 14))
+username_entry.pack(pady=(5, 20), padx=40)
 
 # Password
-CTkLabel(frame, text="Password:", text_color="white").pack()
-password_entry = CTkEntry(frame, show="*", width=250, fg_color="#2a2a2a", border_color="#444", text_color="white")
-password_entry.pack(pady=5)
+CTkLabel(frame, text="Password:", font=("Segoe UI", 14), text_color="#bbbbbb").pack(anchor="w", padx=40)
+password_entry = CTkEntry(frame, show="*", width=320, height=40, fg_color="#1e1e1e", border_color="#333", text_color="white", font=("Segoe UI", 14))
+password_entry.pack(pady=(5, 15), padx=40)
 
-# --- Password Toggle ---
 def toggle_password():
     if password_entry.cget("show") == "*":
         password_entry.configure(show="")
@@ -110,33 +112,28 @@ def toggle_password():
         password_entry.configure(show="*")
         toggle_btn.configure(text="👁 Show")
 
-toggle_btn = CTkButton(frame, text="👁 Show", command=toggle_password, width=60, height=28, fg_color="#333333", text_color="white", hover_color="#444444")
-toggle_btn.pack(pady=(0, 10))
+toggle_btn = CTkButton(frame, text="👁 Show", command=toggle_password, width=70, height=30, fg_color="#222222", text_color="#bbb", hover_color="#333")
+toggle_btn.pack(pady=(0, 25))
 
-# --- Login Button ---
 def on_hover(event): login_button.configure(fg_color="#007acc")
 def on_leave(event): login_button.configure(fg_color="#333333")
 
-login_button = CTkButton(frame, text="Login", command=authenticate_login, fg_color="#333333", text_color="white", hover_color="#007acc")
-login_button.pack(pady=10)
+login_button = CTkButton(frame, text="Login", command=authenticate_login, width=320, height=45, fg_color="#333333", text_color="white", hover_color="#007acc", font=("Segoe UI", 16, "bold"))
+login_button.pack()
 login_button.bind("<Enter>", on_hover)
 login_button.bind("<Leave>", on_leave)
 
-# --- Registration Button ---
-register_button = CTkButton(frame, text="Register", command=register_user, fg_color="#333333", text_color="white", hover_color="#444444")
-register_button.pack(pady=5)
+register_button = CTkButton(frame, text="Register", command=register_user, width=320, height=40, fg_color="#222222", text_color="#bbb", hover_color="#007acc", font=("Segoe UI", 14))
+register_button.pack(pady=(15, 15))
 
-# --- Input Focus Effects ---
 def on_focus_in(event): event.widget.configure(border_color="#00bfff")
-def on_focus_out(event): event.widget.configure(border_color="#444")
+def on_focus_out(event): event.widget.configure(border_color="#333")
 
 username_entry.bind("<FocusIn>", on_focus_in)
 username_entry.bind("<FocusOut>", on_focus_out)
 password_entry.bind("<FocusIn>", on_focus_in)
 password_entry.bind("<FocusOut>", on_focus_out)
 
-# Enter key triggers login
 root.bind('<Return>', lambda event: authenticate_login())
 
-# Run app
 root.mainloop()
