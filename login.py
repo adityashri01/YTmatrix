@@ -48,7 +48,9 @@ def authenticate_login():
                 messagebox.showinfo("Login Success", f"✅ Welcome back, {username}!")
                 root.destroy()
                 import Gui
+                Gui.start_dashboard(username)   # <-- Username yahan bhej rahe hain
                 return
+
             else:
                 messagebox.showerror("Login Failed", "❌ Incorrect password.")
                 username_entry.delete(0, 'end')
