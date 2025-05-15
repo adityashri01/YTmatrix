@@ -4,8 +4,39 @@ from main import fetch_playlist_videos, fetch_video_details
 import time
 from firebase import db
 from google.cloud import firestore  # required for SERVER_TIMESTAMP
+from datetime import datetime
+
+logged_in_user = None  # Global variable for current logged-in user
+
 
 logged_in = True
+
+def save_search_history(url, max_duration=None, max_videos=None, sort_option=None):
+    if not logged_in_user:
+        messagebox.showerror("Error", "User not logged in.")
+        return
+
+    search_record = {
+        "url": url,
+        "timestamp": firestore.SERVER_TIMESTAMP,
+        "filters": {
+            "max_duration": max_duration,
+            "max_videos": max_videos,
+            "sort_by": sort_option
+        }
+    }
+    
+    try:
+        db.collection("users").document(logged_in_user).collection("search_history").add(search_record)
+        messagebox.showinfo("Success", "Search history saved.")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to save search history: {e}")
+
+
+
+def start_dashboard(username):
+    global logged_in_user
+    logged_in_user = username
 
 def logout():
     global logged_in
@@ -200,6 +231,8 @@ def toggle_theme():
         video_count_entry.configure(button_color="white", text_color="black")
         is_dark_mode = False
 
+search_button = ctk.CTkButton(app, text="Save Search History", command=lambda: save_search_history("https://example.com"))
+search_button.pack(pady=20)
+
 # === Run App ===
 app.mainloop()
-
